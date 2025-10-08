@@ -6,12 +6,20 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
+
+// Simple test route
 app.get("/", (req, res) => res.send("Chat server running..."));
 
+// Use the port Render provides
+const PORT = process.env.PORT || 3000;
+
+// Create HTTP server
 const server = http.createServer(app);
+
+// Socket.IO server
 const io = new Server(server, {
   cors: {
-    origin: "*", // allow all for testing (we’ll tighten later)
+    origin: "*", // allow all for testing
     methods: ["GET", "POST"],
   },
 });
@@ -24,30 +32,26 @@ io.on("connection", (socket) => {
     socket.join(roomName);
     socket.room = roomName;
     console.log(`📥 ${socket.id} joined room: ${roomName}`);
-    socket
-      .to(roomName)
-      .emit("systemMessage", `User ${socket.id} joined the room`);
+    socket.to(roomName).emit("systemMessage", `User joined the room`);
   });
 
-  // When someone sends a chat message
+  // Chat messages
   socket.on("chatMessage", (data) => {
     const { room, name, message } = data;
-    console.log(`💬 [${room}] ${name}: ${message}`);
     io.to(room).emit("chatMessage", { name, message });
+    console.log(`💬 [${room}] ${name}: ${message}`);
   });
 
-  // Handle disconnect
+  // Disconnect
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
     if (socket.room) {
-      socket
-        .to(socket.room)
-        .emit("systemMessage", `User ${socket.id} left the room`);
+      socket.to(socket.room).emit("systemMessage", `User left the room`);
     }
   });
 });
 
-const PORT = process.env.PORT || 3000;
+// Listen on Render port
 server.listen(PORT, () =>
   console.log(`🚀 Chat server running on port ${PORT}`)
 );
